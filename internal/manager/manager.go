@@ -1,19 +1,24 @@
-package main
+package manager
 
 import (
 	"fmt"
 	"log"
-	"password-manager/vaultCreation"
+	"os"
+	"password-manager/internal/vaultCreation"
+
+	"golang.org/x/term"
 )
 
-func main() {
+func Manage() {
 	// Set properties of the predefined Logger, including
 	// the log entry prefix and a flag to disable printing
 	// the time, source file, and line number.
 	log.SetPrefix("vault: ")
 	log.SetFlags(0)
 
-	var vaultName, masterPass, confirmPass string
+	var vaultName string
+
+	fd := int(os.Stdin.Fd())
 
 	fmt.Println("Creating a new vault!")
 
@@ -21,15 +26,27 @@ func main() {
 	fmt.Scan(&vaultName)
 
 	fmt.Print("Please provide a master password: ")
-	fmt.Scan(&masterPass)
+	// fmt.Scan(&masterPass)
+	masterPass, err := term.ReadPassword(fd)
+	fmt.Println()
+
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Print("Please confirm the master password: ")
-	fmt.Scan(&confirmPass)
+	// fmt.Scan(&confirmPass)
+	confirmPass, err := term.ReadPassword(fd)
+	fmt.Println()
+
+	if err != nil {
+		panic(err)
+	}
 
 	// If a vault is created vault will contain a boolean value
 	// of true and error as nil else vault will be false and error
 	// will contain error message.
-	vault, err := vaultCreation.CreateVault(vaultName, masterPass, confirmPass)
+	vault, err := vaultCreation.CreateVault(vaultName, string(masterPass), string(confirmPass))
 
 	// If an error was returned, print it to the console and
 	// exit the program.

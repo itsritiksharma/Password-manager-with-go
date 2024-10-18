@@ -28,7 +28,7 @@ func CreateFile(filename string) (bool, error) {
 	filePresent := FileExists(filename)
 
 	if filePresent {
-		fmt.Print("File already exists. Do you want to add new credentials instead? ")
+		fmt.Print("Vault already exists. Would you like to signin to " + filename + " vault instead? ")
 		fmt.Scan(&updateFile)
 
 		if updateFile == "yes" {

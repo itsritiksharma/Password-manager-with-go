@@ -2,10 +2,10 @@ package vaultCreation
 
 import (
 	"errors"
-	"password-manager/fileOperations"
+	"password-manager/internal/fileOperations"
 )
 
-func CreateVault(vaultName string, masterPass string, confirmPass string) (bool, error) {
+func CreateVault(vaultName, masterPass, confirmPass string) (bool, error) {
 
 	// If no name was given, return an error with a message.
 	if vaultName == "" {
