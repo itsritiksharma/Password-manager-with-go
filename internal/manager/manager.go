@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"password-manager/internal/vaultCreation"
+	"password-manager/internal/vaultOperations"
 
 	"golang.org/x/term"
 )
@@ -46,7 +46,7 @@ func Manage() {
 	// If a vault is created vault will contain a boolean value
 	// of true and error as nil else vault will be false and error
 	// will contain error message.
-	vault, err := vaultCreation.CreateVault(vaultName, string(masterPass), string(confirmPass))
+	vault, err := vaultOperations.CreateVault(vaultName, string(masterPass), string(confirmPass))
 
 	// If an error was returned, print it to the console and
 	// exit the program.
@@ -57,7 +57,10 @@ func Manage() {
 	// If vault print the valut cration confirmation message.
 	if vault {
 		fmt.Printf("New vault create and saved as %s.csv", vaultName)
+		fmt.Println()
 	} else {
 		fmt.Printf("No new vault created.")
+		fmt.Println()
+
 	}
 }

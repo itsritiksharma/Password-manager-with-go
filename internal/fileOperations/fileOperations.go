@@ -32,11 +32,12 @@ func CreateFile(filename string) (bool, error) {
 		fmt.Scan(&updateFile)
 
 		if updateFile == "yes" {
-			_, err := UpdateFile(filename)
+			//TODO: Provide the user functionality to signin to vault.
+			// _, err := UpdateFile(filename)
 
-			if err != nil {
-				panic(err)
-			}
+			// if err != nil {
+			// 	panic(err)
+			// }
 
 			fmt.Println("File updated successfully!")
 
@@ -48,10 +49,33 @@ func CreateFile(filename string) (bool, error) {
 
 	} else {
 
-		data := [][]string{
-			{"vegetables", "asdf"},
-			{"carrot", "banana"},
-			{"potato", "strawberry"},
+		data := make(map[string]string)
+		var finalData [][]string
+		var username, password string
+
+		var takeInput string = "y"
+
+		for takeInput != "N" {
+			if takeInput == "y" {
+				fmt.Print("Enter username: ")
+				fmt.Scan(&username)
+				fmt.Print("Enter password for " + username + ": ")
+				fmt.Scan(&password)
+
+				data[username] = password
+
+				fmt.Print("Do you want to add more credentials [y/N]? ")
+				fmt.Scan(&takeInput)
+			} else {
+				fmt.Println("Please enter a valid option.")
+				fmt.Print("Do you want to add more credentials?[y/N] ")
+				fmt.Scan(&takeInput)
+			}
+
+		}
+
+		for key, value := range data {
+			finalData = append(finalData, []string{key, value})
 		}
 
 		// create a file
@@ -68,7 +92,7 @@ func CreateFile(filename string) (bool, error) {
 		defer writer.Flush()
 
 		// write all rows at once
-		writer.WriteAll(data)
+		writer.WriteAll(finalData)
 
 		return true, nil
 	}
