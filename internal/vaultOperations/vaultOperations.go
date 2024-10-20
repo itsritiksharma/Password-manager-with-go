@@ -20,7 +20,7 @@ func CreateVault(vaultName, masterPass, confirmPass string) (bool, error) {
 	}
 
 	// Create the vault file with the password.
-	file, err := fileOperations.CreateFile(vaultName + ".csv")
+	file, err := fileOperations.CreateFile(vaultName, masterPass)
 
 	if err != nil {
 		return false, errors.New("file creation error")
