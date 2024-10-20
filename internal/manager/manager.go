@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"password-manager/internal/hash"
 	"password-manager/internal/vaultOperations"
 
 	"golang.org/x/term"
@@ -16,7 +17,7 @@ func Manage() {
 	log.SetPrefix("vault: ")
 	log.SetFlags(0)
 
-	var vaultName string
+	var vaultName, hashedMasterPassword, hashedConfirmPassword string
 
 	fd := int(os.Stdin.Fd())
 
@@ -26,7 +27,6 @@ func Manage() {
 	fmt.Scan(&vaultName)
 
 	fmt.Print("Please provide a master password: ")
-	// fmt.Scan(&masterPass)
 	masterPass, err := term.ReadPassword(fd)
 	fmt.Println()
 
@@ -35,7 +35,6 @@ func Manage() {
 	}
 
 	fmt.Print("Please confirm the master password: ")
-	// fmt.Scan(&confirmPass)
 	confirmPass, err := term.ReadPassword(fd)
 	fmt.Println()
 
@@ -43,10 +42,13 @@ func Manage() {
 		panic(err)
 	}
 
+	hashedMasterPassword = hash.HashPassword(masterPass)
+	hashedConfirmPassword = hash.HashPassword(confirmPass)
+
 	// If a vault is created vault will contain a boolean value
 	// of true and error as nil else vault will be false and error
 	// will contain error message.
-	vault, err := vaultOperations.CreateVault(vaultName, string(masterPass), string(confirmPass))
+	vault, err := vaultOperations.CreateVault(vaultName, string(hashedMasterPassword), string(hashedConfirmPassword))
 
 	// If an error was returned, print it to the console and
 	// exit the program.
