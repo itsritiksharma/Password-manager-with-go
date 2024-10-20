@@ -2,33 +2,58 @@ package fileOperations
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os"
+
+	"golang.org/x/term"
 )
+
+const vaultFile string = "vaults/vault.csv"
+const jsonFile string = "vaults/vaultJson.json"
+
+// Credential represents a username/password pair.
+type Credential struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Vault represents a collection of credentials associated with a master password.
+type Vault struct {
+	VaultName      string       `json:"vaultName"`
+	MasterPassword string       `json:"masterPassword"`
+	Creds          []Credential `json:"creds"`
+}
+
+type Json struct {
+	VaultName      string       `json:"vaultName"`
+	MasterPassword string       `json:"masterPassword"`
+	Creds          []Credential `json:"creds"`
+}
 
 func FileExists(filename string) bool {
 	log.SetPrefix("file exists: ")
 	log.SetFlags(0)
 
-	info, err := os.Stat(filename)
+	info, err := os.Stat(vaultFile)
 	if os.IsNotExist(err) {
 		return false
 	}
 	return !info.IsDir()
 }
 
-func CreateFile(filename string) (bool, error) {
+func CreateFile(vaultName, password string) (bool, error) {
 	log.SetPrefix("createfile: ")
 	log.SetFlags(0)
 
 	var updateFile string
 
-	filePresent := FileExists(filename)
+	filePresent := FileExists(vaultFile)
 
 	if filePresent {
-		fmt.Print("Vault already exists. Would you like to signin to " + filename + " vault instead? ")
+		fmt.Print("Vault already exists. Would you like to signin to " + vaultName + " vault instead? ")
 		fmt.Scan(&updateFile)
 
 		if updateFile == "yes" {
@@ -50,8 +75,9 @@ func CreateFile(filename string) (bool, error) {
 	} else {
 
 		data := make(map[string]string)
-		var finalData [][]string
-		var username, password string
+		var username string
+		var creds []Credential
+		fd := int(os.Stdin.Fd())
 
 		var takeInput string = "y"
 
@@ -60,9 +86,16 @@ func CreateFile(filename string) (bool, error) {
 				fmt.Print("Enter username: ")
 				fmt.Scan(&username)
 				fmt.Print("Enter password for " + username + ": ")
-				fmt.Scan(&password)
+				password, err := term.ReadPassword(fd)
+				fmt.Println()
 
-				data[username] = password
+				if err != nil {
+					panic(err)
+				}
+
+				// hash.Hash(password)
+
+				data[username] = string(password)
 
 				fmt.Print("Do you want to add more credentials [y/N]? ")
 				fmt.Scan(&takeInput)
@@ -75,14 +108,44 @@ func CreateFile(filename string) (bool, error) {
 		}
 
 		for key, value := range data {
-			finalData = append(finalData, []string{key, value})
+			fmt.Println()
+			creds = append(creds, Credential{Username: key, Password: value})
 		}
 
-		// create a file
-		file, err := os.Create(filename)
+		finalData := []Vault{
+			{
+				VaultName:      vaultName,
+				MasterPassword: password,
+				Creds:          creds,
+			},
+		}
+
+		var result [][]string
+		for _, vault := range finalData {
+			// Add vault name and master password as the first entry
+			entry := []string{vault.VaultName, vault.MasterPassword}
+
+			// Add each credential as a separate entry
+			for _, cred := range vault.Creds {
+				entry = append(entry, cred.Username, cred.Password)
+			}
+
+			// Append the entry to the result
+			result = append(result, entry)
+		}
+
+		// Create the vaults directory with.
+		err := os.Mkdir("vaults/", os.FileMode(0777))
 		if err != nil {
 			log.Fatal(err)
-			return false, errors.New("failed to create the file")
+			return false, errors.New("failed to create the vault directory.")
+		}
+
+		// Create the vault file
+		file, err := os.Create(vaultFile)
+		if err != nil {
+			log.Fatal(err)
+			return false, errors.New("failed to create the vault file")
 		}
 		defer file.Close()
 
@@ -92,7 +155,17 @@ func CreateFile(filename string) (bool, error) {
 		defer writer.Flush()
 
 		// write all rows at once
-		writer.WriteAll(finalData)
+		writer.WriteAll(result)
+
+		// Marshal the vaults slice to JSON
+		jsonData, err := json.MarshalIndent(finalData, "", "  ")
+
+		if err != nil {
+			log.Fatalf("Failed to create the JSON file.")
+		}
+
+		// write all rows at once
+		os.WriteFile(jsonFile, jsonData, os.FileMode(0666))
 
 		return true, nil
 	}
@@ -106,12 +179,12 @@ func UpdateFile(filename string) (bool, error) {
 	log.SetPrefix("update file: ")
 	log.SetFlags(0)
 
-	filePresent := FileExists(filename)
+	filePresent := FileExists(vaultFile)
 
 	if filePresent {
 
 		// Open the CSV file
-		file, err := os.Open(filename)
+		file, err := os.Open(vaultFile)
 		if err != nil {
 			return false, errors.New("failed to open the file with filename: " + filename)
 		}
@@ -134,7 +207,7 @@ func UpdateFile(filename string) (bool, error) {
 		}
 
 		// Write the CSV data
-		file2, err := os.Create(filename)
+		file2, err := os.Create(vaultFile)
 		if err != nil {
 			return false, errors.New("writing to the file failed")
 		}
