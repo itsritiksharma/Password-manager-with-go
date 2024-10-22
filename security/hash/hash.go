@@ -25,35 +25,34 @@ func getEnvVariables(key string) string {
 /**
  * Hashed password with provided salt using sha256 algorithm.
  */
-func hash(password string, salt string) string {
+func hash(hashingString string, salt string) string {
 	// declares new sha256 hash variable.
 	h := sha256.New()
 
 	// writes the byts from the combination of password and salt to sha256 hash variable.
-	h.Write([]byte(string(password) + salt))
+	h.Write([]byte(string(hashingString) + salt))
 
 	// append the current hash to nil and assign it to pass variable.
-	pass := h.Sum(nil)
+	hashedString := h.Sum(nil)
 
 	// Encodes the hashed password to string
-	passHex := hex.EncodeToString(pass)
+	stringHex := hex.EncodeToString(hashedString)
 
-	return passHex
+	return stringHex
 }
 
 /**
- * Hashes the password twice first with salt then with pepper.
+ * Hashes the password with salt.
  */
-func HashPassword(password []byte) string {
+func GetHashedKey() string {
 
-	var hashedPassword string
+	var hashedKey string
 
-	pepper := getEnvVariables("PEPPER")
-	passSalt := getEnvVariables("SALT")
+	encKey := getEnvVariables("ENCRYPTION_KEY")
+	salt := getEnvVariables("SALT")
 
-	hashedPassword = hash(string(password), passSalt)
-	hashedPassword = hash(string(hashedPassword), pepper)
+	hashedKey = hash(string(encKey), salt)
 
-	return hashedPassword
+	return hashedKey
 
 }
