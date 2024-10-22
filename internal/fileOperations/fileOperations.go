@@ -7,8 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	"password-manager/internal/hash"
+	"password-manager/security/encryption"
 
 	"golang.org/x/term"
 )
@@ -97,7 +96,7 @@ func CreateFile(vaultName, password string) (bool, error) {
 				}
 
 				// Hash the password for creds.
-				hexPass = hash.HashPassword(password)
+				hexPass = encryption.EncryptPassword(password)
 
 				credData[username] = string(hexPass)
 
@@ -180,9 +179,23 @@ func CreateFile(vaultName, password string) (bool, error) {
 // 	filePresent := FileExists(vaultFile)
 
 // 	if filePresent {
+// If the file doesn't exist, create it, or append to the file
+
+// TODO Code to append to file
+// f, err := os.OpenFile("access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+// if err != nil {
+// 	log.Fatal(err)
+// }
+// if _, err := f.Write([]byte("appended some data\n")); err != nil {
+// 	f.Close() // ignore error; Write error takes precedence
+// 	log.Fatal(err)
+// }
+// if err := f.Close(); err != nil {
+// 	log.Fatal(err)
+// }
 
 // 		// Open the CSV file
-// 		file, err := os.Open(vaultFile)
+// file, err := os.Open(vaultFile)
 // 		if err != nil {
 // 			return false, errors.New("failed to open the file with filename: " + filename)
 // 		}

@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"password-manager/internal/manager"
+	"password-manager/internal/passwordmanager"
 )
 
 func main() {
-	fmt.Println("PASSWORD MANAGER")
-	manager.Manage()
+	fmt.Println("-----------PASSWORD MANAGER-----------")
+	passwordmanager.Manage()
 }
