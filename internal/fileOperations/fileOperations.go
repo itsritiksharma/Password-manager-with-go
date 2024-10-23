@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"password-manager/security/encryption"
+	"strings"
 
 	"golang.org/x/term"
 )
@@ -136,10 +137,11 @@ func CreateFile(vaultName, password string) (bool, error) {
 	// write all rows at once
 	csvWriter.WriteAll(csvData)
 
-	jsonFileData := Json{
+	jsonFileData := []Json{{
 		VaultName:      vaultName,
 		MasterPassword: password,
 		Creds:          creds,
+	},
 	}
 
 	// Marshal the vaults slice to JSON
@@ -149,8 +151,50 @@ func CreateFile(vaultName, password string) (bool, error) {
 		log.Fatalf("Failed to create the JSON file.")
 	}
 
+	jsonFileExists, err := FileExists("VaultsInfo.json")
+	if err != nil {
+		log.Fatal("Json file exists: ", err)
+	}
+
+	if jsonFileExists {
+		readJsonFile, err := os.ReadFile(vaultDir + "VaultsInfo.json")
+		if err != nil {
+			log.Fatal("reading Json file error: ", err)
+		}
+
+		jsonFileData := string(readJsonFile)
+
+		splitJsonFile := strings.Split(jsonFileData, "][")
+
+		stringg := strings.Join(splitJsonFile, ",")
+		// fmt.Println(stringg)
+		trimmedJsonFileData := stringg[:len(stringg)-1]
+		trimmedJoiningString := string(jsonData[1 : len(jsonData)-1])
+
+		formattedJsonData := strings.Join([]string{trimmedJsonFileData, trimmedJoiningString}, ",") + "]"
+
+		// If the file doesn't exist, create it, or append to the file
+		openJsonFile, err := os.Create(vaultDir + "VaultsInfo.json")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer openJsonFile.Close()
+
+		_, err = openJsonFile.Write([]byte(formattedJsonData))
+		if err != nil {
+			openJsonFile.Close() // ignore error; Write error takes precedence
+			log.Fatal("Failed to write to file: ", err)
+		}
+		err = openJsonFile.Close()
+		if err != nil {
+			log.Fatal("Failed to close the json file: ", err)
+		}
+
+		return true, nil
+	}
+
 	// If the file doesn't exist, create it, or append to the file
-	openJsonFile, err := os.OpenFile(vaultDir+"VaultsInfo.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	openJsonFile, err := os.Create(vaultDir + "VaultsInfo.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -159,11 +203,11 @@ func CreateFile(vaultName, password string) (bool, error) {
 	_, err = openJsonFile.Write(jsonData)
 	if err != nil {
 		openJsonFile.Close() // ignore error; Write error takes precedence
-		log.Fatal(err)
+		log.Fatal("Failed to write to file: ", err)
 	}
 	err = openJsonFile.Close()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to close the json file: ", err)
 	}
 
 	// write all rows at once
