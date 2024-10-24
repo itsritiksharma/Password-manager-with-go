@@ -32,6 +32,99 @@ type Json struct {
 	Creds          []Credential `json:"creds"`
 }
 
+func createCsvFile(vaultFile string, csvData [][]string) (bool, error) {
+	// Create the vault file
+	file, err := os.Create(vaultDir + vaultFile)
+	if err != nil {
+		log.Fatal(err)
+		return false, errors.New("failed to create the vault file")
+	}
+	defer file.Close()
+
+	// initialize csv writer
+	csvWriter := csv.NewWriter(file)
+
+	defer csvWriter.Flush()
+
+	// write all rows at once
+	csvWriter.WriteAll(csvData)
+
+	return true, nil
+}
+
+func createJsonFile(jsonFileData []Json) (bool, error) {
+
+	// Marshal the vaults slice to JSON
+	jsonData, err := json.MarshalIndent(jsonFileData, "", "  ")
+
+	if err != nil {
+		log.Fatalf("Failed to create the JSON file.")
+	}
+
+	jsonFileExists, err := FileExists("VaultsInfo.json")
+	if err != nil {
+		log.Fatal("Json file exists: ", err)
+	}
+
+	if jsonFileExists {
+		readJsonFile, err := os.ReadFile(vaultDir + "VaultsInfo.json")
+		if err != nil {
+			log.Fatal("reading Json file error: ", err)
+		}
+
+		jsonFileData := string(readJsonFile)
+
+		splitJsonFile := strings.Split(jsonFileData, "][")
+
+		stringg := strings.Join(splitJsonFile, ",")
+
+		trimmedJsonFileData := stringg[:len(stringg)-1]
+		trimmedJoiningString := string(jsonData[1 : len(jsonData)-1])
+
+		formattedJsonData := strings.Join([]string{trimmedJsonFileData, trimmedJoiningString}, ",") + "]"
+
+		// If the file doesn't exist, create it, or append to the file
+		openJsonFile, err := os.Create(vaultDir + "VaultsInfo.json")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer openJsonFile.Close()
+
+		// Encrypt the data before writing.
+
+		_, err = openJsonFile.Write([]byte(formattedJsonData))
+		if err != nil {
+			openJsonFile.Close() // ignore error; Write error takes precedence
+			log.Fatal("Failed to write to file: ", err)
+		}
+		err = openJsonFile.Close()
+		if err != nil {
+			log.Fatal("Failed to close the json file: ", err)
+		}
+
+		return true, nil
+	}
+
+	// If the file doesn't exist, create it, or append to the file
+	openJsonFile, err := os.Create(vaultDir + "VaultsInfo.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer openJsonFile.Close()
+
+	_, err = openJsonFile.Write(jsonData)
+	if err != nil {
+		openJsonFile.Close() // ignore error; Write error takes precedence
+		log.Fatal("Failed to write to file: ", err)
+	}
+	err = openJsonFile.Close()
+	if err != nil {
+		log.Fatal("Failed to close the json file: ", err)
+	}
+
+	return true, nil
+}
+
 func DirExists() bool {
 	log.SetPrefix("file exists: ")
 	log.SetFlags(0)
@@ -105,7 +198,6 @@ func CreateFile(vaultName, password string) (bool, error) {
 			fmt.Print("Do you want to add more credentials?[y/N] ")
 			fmt.Scan(&takeInput)
 		}
-
 	}
 
 	// Create a mapping of credential from the data entered by user.
@@ -121,97 +213,31 @@ func CreateFile(vaultName, password string) (bool, error) {
 	// Append the entry to the result
 	csvData = append(csvData, vault)
 
-	// Create the vault file
-	file, err := os.Create(vaultDir + vaultFile)
+	// Encrypt the csvdata before writing.
+	// encryption.EncryptFile([]byte(csvData))
+
+	_, err := createCsvFile(vaultFile, csvData)
 	if err != nil {
-		log.Fatal(err)
-		return false, errors.New("failed to create the vault file")
+		return false, errors.New("failed to create the csv file")
 	}
-	defer file.Close()
-
-	// initialize csv writer
-	csvWriter := csv.NewWriter(file)
-
-	defer csvWriter.Flush()
-
-	// write all rows at once
-	csvWriter.WriteAll(csvData)
 
 	jsonFileData := []Json{{
 		VaultName:      vaultName,
 		MasterPassword: password,
 		Creds:          creds,
-	},
-	}
+	}}
 
+	// Encrypt the json data before writing.
 	// Marshal the vaults slice to JSON
-	jsonData, err := json.MarshalIndent(jsonFileData, "", "  ")
-
+	// jsonData, err := json.MarshalIndent(jsonFileData, "", "  ")
+	// if err != nil {
+	// 	log.Fatalf("Failed to create the JSON file.")
+	// }
+	// encryption.EncryptFile([]byte(jsonFileData))
+	_, err = createJsonFile(jsonFileData)
 	if err != nil {
-		log.Fatalf("Failed to create the JSON file.")
+		return false, errors.New("failed to create the json file")
 	}
-
-	jsonFileExists, err := FileExists("VaultsInfo.json")
-	if err != nil {
-		log.Fatal("Json file exists: ", err)
-	}
-
-	if jsonFileExists {
-		readJsonFile, err := os.ReadFile(vaultDir + "VaultsInfo.json")
-		if err != nil {
-			log.Fatal("reading Json file error: ", err)
-		}
-
-		jsonFileData := string(readJsonFile)
-
-		splitJsonFile := strings.Split(jsonFileData, "][")
-
-		stringg := strings.Join(splitJsonFile, ",")
-		// fmt.Println(stringg)
-		trimmedJsonFileData := stringg[:len(stringg)-1]
-		trimmedJoiningString := string(jsonData[1 : len(jsonData)-1])
-
-		formattedJsonData := strings.Join([]string{trimmedJsonFileData, trimmedJoiningString}, ",") + "]"
-
-		// If the file doesn't exist, create it, or append to the file
-		openJsonFile, err := os.Create(vaultDir + "VaultsInfo.json")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer openJsonFile.Close()
-
-		_, err = openJsonFile.Write([]byte(formattedJsonData))
-		if err != nil {
-			openJsonFile.Close() // ignore error; Write error takes precedence
-			log.Fatal("Failed to write to file: ", err)
-		}
-		err = openJsonFile.Close()
-		if err != nil {
-			log.Fatal("Failed to close the json file: ", err)
-		}
-
-		return true, nil
-	}
-
-	// If the file doesn't exist, create it, or append to the file
-	openJsonFile, err := os.Create(vaultDir + "VaultsInfo.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer openJsonFile.Close()
-
-	_, err = openJsonFile.Write(jsonData)
-	if err != nil {
-		openJsonFile.Close() // ignore error; Write error takes precedence
-		log.Fatal("Failed to write to file: ", err)
-	}
-	err = openJsonFile.Close()
-	if err != nil {
-		log.Fatal("Failed to close the json file: ", err)
-	}
-
-	// write all rows at once
-	// os.WriteFile(vaultDir+"VaultsInfo.json", jsonData, os.FileMode(0666))
 
 	return true, nil
 }

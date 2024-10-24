@@ -15,7 +15,7 @@ import (
  */
 func EncryptPassword(password []byte) string {
 
-	hashedKey := hash.GetHashedKey()
+	hashedKey := hash.GetPasswordHashingKey()
 
 	key, _ := hex.DecodeString(hashedKey)
 	// inClearData := []byte("Some Clear Data")
@@ -41,4 +41,38 @@ func EncryptPassword(password []byte) string {
 	encodedEncryptedPassword := hex.EncodeToString(cipheredText)
 
 	return encodedEncryptedPassword
+}
+
+/**
+ * Encrypts the File with AES-256 algo and a hash key generated using sha-256.
+ */
+func EncryptFile(fileData []byte) string {
+
+	hashedKey := hash.GetFileHashingKey()
+
+	key, _ := hex.DecodeString(hashedKey)
+	// inClearData := []byte("Some Clear Data")
+
+	aesCipher, err := aes.NewCipher(key)
+	if err != nil {
+		log.Fatalf("Failed to create new cipher: %x", err)
+	}
+
+	gcmBlock, err := cipher.NewGCM(aesCipher)
+	if err != nil {
+		log.Fatalf("Failed to create new GCM block: %x", err)
+	}
+
+	nonce := make([]byte, gcmBlock.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+
+		panic(err.Error())
+	}
+
+	cipheredText := gcmBlock.Seal(nonce, nonce, fileData, nil)
+
+	encodedEncryptedFileData := hex.EncodeToString(cipheredText)
+
+	return encodedEncryptedFileData
+
 }
