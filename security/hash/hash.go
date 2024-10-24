@@ -42,13 +42,29 @@ func hash(hashingString string, salt string) string {
 }
 
 /**
- * Hashes the password with salt.
+ * Gives a hashed key for password encryption.
  */
-func GetHashedKey() string {
+func GetPasswordHashingKey() string {
 
 	var hashedKey string
 
-	encKey := getEnvVariables("ENCRYPTION_KEY")
+	encKey := getEnvVariables("PASSWORD_ENCRYPTION_KEY")
+	salt := getEnvVariables("SALT")
+
+	hashedKey = hash(string(encKey), salt)
+
+	return hashedKey
+
+}
+
+/**
+ * Gives a hashed key for file encryption.
+ */
+func GetFileHashingKey() string {
+
+	var hashedKey string
+
+	encKey := getEnvVariables("FILE_ENCRYPTION_KEY")
 	salt := getEnvVariables("SALT")
 
 	hashedKey = hash(string(encKey), salt)
