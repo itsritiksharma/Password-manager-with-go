@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"password-manager/security/encryption"
+	"strings"
 
 	"golang.org/x/term"
 )
@@ -31,22 +32,43 @@ type Json struct {
 	Creds          []Credential `json:"creds"`
 }
 
-func FileExists(filename string) bool {
+func DirExists() bool {
 	log.SetPrefix("file exists: ")
 	log.SetFlags(0)
 
-	info, err := os.Stat(vaultDir + filename)
-	if os.IsNotExist(err) {
+	files, err := os.ReadDir(vaultDir)
+	if err != nil {
 		return false
 	}
-	return !info.IsDir()
+	if len(files) <= 0 {
+		return true
+	}
+	return true
+}
+
+func FileExists(filename string) (bool, error) {
+	log.SetPrefix("file exists: ")
+	log.SetFlags(0)
+
+	files, err := os.ReadDir(vaultDir)
+	if err != nil {
+		return false, errors.New("vaults directory does not exist")
+	}
+
+	for _, file := range files {
+		if file.Name() == filename {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func CreateFile(vaultName, password string) (bool, error) {
 	log.SetPrefix("createfile: ")
 	log.SetFlags(0)
 
-	var updateFile, hexPass, username string
+	var hexPass, username string
 	var takeInput string = "y"
 
 	var vault []string
@@ -57,115 +79,141 @@ func CreateFile(vaultName, password string) (bool, error) {
 	fd := int(os.Stdin.Fd())
 	credData := make(map[string]string)
 
-	filePresent := FileExists(vaultFile)
+	// Prompt user to enter username and password.
+	for takeInput != "N" {
+		if takeInput == "y" {
+			fmt.Print("Enter username: ")
+			fmt.Scan(&username)
 
-	if filePresent {
-		fmt.Print("Vault already exists. Would you like to signin to " + vaultName + " vault instead? ")
-		fmt.Scan(&updateFile)
+			fmt.Print("Enter password for " + username + ": ")
+			password, err := term.ReadPassword(fd)
+			fmt.Println()
 
-		if updateFile == "yes" {
-			//TODO: Provide the user functionality to signin to vault.
-			// _, err := UpdateFile(filename)
-
-			// if err != nil {
-			// 	panic(err)
-			// }
-
-			fmt.Println("File updated successfully!")
-
-			return true, nil
-
-		}
-
-		return false, nil
-
-	} else {
-
-		// Prompt user to enter username and password.
-		for takeInput != "N" {
-			if takeInput == "y" {
-				fmt.Print("Enter username: ")
-				fmt.Scan(&username)
-
-				fmt.Print("Enter password for " + username + ": ")
-				password, err := term.ReadPassword(fd)
-				fmt.Println()
-
-				if err != nil {
-					panic(err)
-				}
-
-				// Hash the password for creds.
-				hexPass = encryption.EncryptPassword(password)
-
-				credData[username] = string(hexPass)
-
-				fmt.Print("Do you want to add more credentials [y/N]? ")
-				fmt.Scan(&takeInput)
-			} else {
-				fmt.Println("Please enter a valid option.")
-				fmt.Print("Do you want to add more credentials?[y/N] ")
-				fmt.Scan(&takeInput)
+			if err != nil {
+				panic(err)
 			}
 
+			// Hash the password for creds.
+			hexPass = encryption.EncryptPassword(password)
+
+			credData[username] = string(hexPass)
+
+			fmt.Print("Do you want to add more credentials [y/N]? ")
+			fmt.Scan(&takeInput)
+		} else {
+			fmt.Println("Please enter a valid option.")
+			fmt.Print("Do you want to add more credentials?[y/N] ")
+			fmt.Scan(&takeInput)
 		}
 
-		// Create a mapping of credential from the data entered by user.
-		for key, value := range credData {
-			creds = append(creds, Credential{Username: key, Password: value})
+	}
+
+	// Create a mapping of credential from the data entered by user.
+	for key, value := range credData {
+		creds = append(creds, Credential{Username: key, Password: value})
+	}
+
+	// Add each credential as a separate entry
+	for _, cred := range creds {
+		vault = append(vault, cred.Username, cred.Password)
+	}
+
+	// Append the entry to the result
+	csvData = append(csvData, vault)
+
+	// Create the vault file
+	file, err := os.Create(vaultDir + vaultFile)
+	if err != nil {
+		log.Fatal(err)
+		return false, errors.New("failed to create the vault file")
+	}
+	defer file.Close()
+
+	// initialize csv writer
+	csvWriter := csv.NewWriter(file)
+
+	defer csvWriter.Flush()
+
+	// write all rows at once
+	csvWriter.WriteAll(csvData)
+
+	jsonFileData := []Json{{
+		VaultName:      vaultName,
+		MasterPassword: password,
+		Creds:          creds,
+	},
+	}
+
+	// Marshal the vaults slice to JSON
+	jsonData, err := json.MarshalIndent(jsonFileData, "", "  ")
+
+	if err != nil {
+		log.Fatalf("Failed to create the JSON file.")
+	}
+
+	jsonFileExists, err := FileExists("VaultsInfo.json")
+	if err != nil {
+		log.Fatal("Json file exists: ", err)
+	}
+
+	if jsonFileExists {
+		readJsonFile, err := os.ReadFile(vaultDir + "VaultsInfo.json")
+		if err != nil {
+			log.Fatal("reading Json file error: ", err)
 		}
 
-		// Add each credential as a separate entry
-		for _, cred := range creds {
-			vault = append(vault, cred.Username, cred.Password)
-		}
+		jsonFileData := string(readJsonFile)
 
-		// Append the entry to the result
-		csvData = append(csvData, vault)
+		splitJsonFile := strings.Split(jsonFileData, "][")
 
-		// Create the vaults directory with and set 744 permission.
-		err := os.Mkdir("vaults/", os.FileMode(0744))
+		stringg := strings.Join(splitJsonFile, ",")
+		// fmt.Println(stringg)
+		trimmedJsonFileData := stringg[:len(stringg)-1]
+		trimmedJoiningString := string(jsonData[1 : len(jsonData)-1])
+
+		formattedJsonData := strings.Join([]string{trimmedJsonFileData, trimmedJoiningString}, ",") + "]"
+
+		// If the file doesn't exist, create it, or append to the file
+		openJsonFile, err := os.Create(vaultDir + "VaultsInfo.json")
 		if err != nil {
 			log.Fatal(err)
-			return false, errors.New("failed to create the vault directory.")
 		}
+		defer openJsonFile.Close()
 
-		// Create the vault file
-		file, err := os.Create(vaultDir + vaultFile)
+		_, err = openJsonFile.Write([]byte(formattedJsonData))
 		if err != nil {
-			log.Fatal(err)
-			return false, errors.New("failed to create the vault file")
+			openJsonFile.Close() // ignore error; Write error takes precedence
+			log.Fatal("Failed to write to file: ", err)
 		}
-		defer file.Close()
-
-		// initialize csv writer
-		csvWriter := csv.NewWriter(file)
-
-		defer csvWriter.Flush()
-
-		// write all rows at once
-		csvWriter.WriteAll(csvData)
-
-		jsonFileData := []Json{
-			{
-				VaultName:      vaultName,
-				MasterPassword: password,
-				Creds:          creds,
-			},
-		}
-
-		// Marshal the vaults slice to JSON
-		jsonData, err := json.MarshalIndent(jsonFileData, "", "  ")
-
+		err = openJsonFile.Close()
 		if err != nil {
-			log.Fatalf("Failed to create the JSON file.")
+			log.Fatal("Failed to close the json file: ", err)
 		}
-
-		// write all rows at once
-		os.WriteFile(vaultDir+"VaultsInfo.json", jsonData, os.FileMode(0666))
 
 		return true, nil
 	}
+
+	// If the file doesn't exist, create it, or append to the file
+	openJsonFile, err := os.Create(vaultDir + "VaultsInfo.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer openJsonFile.Close()
+
+	_, err = openJsonFile.Write(jsonData)
+	if err != nil {
+		openJsonFile.Close() // ignore error; Write error takes precedence
+		log.Fatal("Failed to write to file: ", err)
+	}
+	err = openJsonFile.Close()
+	if err != nil {
+		log.Fatal("Failed to close the json file: ", err)
+	}
+
+	// write all rows at once
+	// os.WriteFile(vaultDir+"VaultsInfo.json", jsonData, os.FileMode(0666))
+
+	return true, nil
 }
 
 // func DeleteFile(filename string) {
