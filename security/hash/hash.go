@@ -47,11 +47,16 @@ func hash(hashingString string, salt string) string {
 func GetPasswordHashingKey() string {
 
 	var hashedKey string
+	var hashTimes int = 4032
 
 	encKey := getEnvVariables("PASSWORD_ENCRYPTION_KEY")
 	salt := getEnvVariables("SALT")
 
-	hashedKey = hash(string(encKey), salt)
+	// hash it multiple times
+	for range hashTimes {
+		hashedKey = hash(string(encKey), salt)
+		encKey = hashedKey
+	}
 
 	return hashedKey
 
