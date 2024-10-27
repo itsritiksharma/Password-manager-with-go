@@ -91,8 +91,9 @@ func createJsonFile(jsonFileData []Json) (bool, error) {
 		defer openJsonFile.Close()
 
 		// Encrypt the data before writing.
+		encryptedFile := encryption.EncryptFile([]byte(formattedJsonData))
 
-		_, err = openJsonFile.Write([]byte(formattedJsonData))
+		_, err = openJsonFile.Write([]byte(encryptedFile))
 		if err != nil {
 			openJsonFile.Close() // ignore error; Write error takes precedence
 			log.Fatal("Failed to write to file: ", err)
