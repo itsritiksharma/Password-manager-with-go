@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/hex"
+	"errors"
 	"log"
 	"os"
 	"password-manager/security/hash"
@@ -55,7 +56,7 @@ func DecryptPassword(encodedEncryptedPassword []byte, masterPassword string) str
 /**
  * Decrypts the password with AES-256 algorithm and GCM.
  */
-func DecryptFile(fileName string, masterPassword string) string {
+func DecryptFile(fileName string, masterPassword string) (string, error) {
 
 	var decryptedFileData []byte
 
@@ -89,10 +90,10 @@ func DecryptFile(fileName string, masterPassword string) string {
 	decryptedFileData, err = gcmBlock.Open(nil, nonce, cipherText, dataVerifier)
 
 	if err != nil {
-		panic(err)
+		return "", errors.New("decryption failed")
 	}
 
 	fileData := string(decryptedFileData)
 
-	return fileData
+	return fileData, nil
 }

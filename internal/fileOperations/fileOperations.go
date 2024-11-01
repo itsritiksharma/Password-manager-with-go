@@ -159,6 +159,7 @@ func CreateFile(vaultName, masterPassword string) (bool, error) {
 	log.SetPrefix("createfile: ")
 	log.SetFlags(0)
 
+	var vault []string
 	var username string
 	var takeInput string = "y"
 
@@ -199,6 +200,14 @@ func CreateFile(vaultName, masterPassword string) (bool, error) {
 		creds = append(creds, Credential{Username: key, Password: value})
 	}
 
+	// Hash the username for creds.
+	encryptedVaultName := encryption.EncryptPassword([]byte(vaultName), masterPassword)
+
+	// Hash the password for creds.
+	encryptedMasterPassword := encryption.EncryptPassword([]byte(masterPassword), masterPassword)
+
+	vault = append(vault, encryptedVaultName, encryptedMasterPassword)
+
 	// Add each credential as a separate entry
 	for _, cred := range creds {
 
@@ -208,9 +217,12 @@ func CreateFile(vaultName, masterPassword string) (bool, error) {
 		// Hash the password for creds.
 		encryptedPassword := encryption.EncryptPassword([]byte(cred.Password), masterPassword)
 
-		encryptedVault := []string{encryptedUsername, encryptedPassword}
-		csvData = append(csvData, encryptedVault)
+		vault = append(vault, encryptedUsername, encryptedPassword)
+
 	}
+
+	// Append the entry to the result
+	csvData = append(csvData, vault)
 
 	_, err := createCsvFile(vaultFile, csvData)
 	if err != nil {

@@ -3,95 +3,14 @@ package vaultOperations
 import (
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"password-manager/internal/fileOperations"
 	"strconv"
-
-	"golang.org/x/term"
 )
 
 /**
  * Function to allow the user to crate a password vault.
  */
-func CreateVault() (bool, error) {
-
-	var vaultName string
-	var readingMasterPassword, readingConfirmPassword int = 1, 1
-	var masterPass, confirmPass []byte
-	var err error
-
-	fd := int(os.Stdin.Fd())
-
-	fmt.Println("Creating a new vault!")
-
-	fmt.Print("Please provide a name for the vault: ")
-	fmt.Scan(&vaultName)
-
-	// If no name was given, return an error with a message.
-	if vaultName == "" {
-		return false, errors.New("empty vault name")
-	}
-
-	dirExists := fileOperations.DirExists()
-
-	if !dirExists {
-		// Create the vaults directory with and set 744 permission.
-		err = os.Mkdir("vaults/", os.FileMode(0744))
-		if err != nil {
-			log.Fatal(err)
-			return false, errors.New("failed to create the vault directory.")
-		}
-	}
-
-	fileExists, err := fileOperations.FileExists(vaultName + ".csv")
-	if err != nil {
-		log.Fatalf("file exist error: %x", err)
-	}
-
-	if fileExists {
-		// call another function which handles user input to determine
-		// what to do next.
-		status, err := ManageExistingVault(vaultName)
-		return status, err
-	}
-
-	for readingMasterPassword != 0 {
-		if readingMasterPassword == 1 {
-			fmt.Print("Please provide a master password: ")
-			masterPass, err = term.ReadPassword(fd)
-			fmt.Println()
-			if err != nil {
-				panic(err)
-			}
-			if len(masterPass) < 8 {
-				fmt.Println("Password shoud be minimum 8 characters long.")
-				readingMasterPassword = 1
-			} else {
-				readingMasterPassword = 0
-			}
-		}
-	}
-
-	for readingConfirmPassword != 0 {
-		if readingConfirmPassword == 1 {
-			fmt.Print("Please confirm the master password: ")
-			confirmPass, err = term.ReadPassword(fd)
-			fmt.Println()
-			if err != nil {
-				panic(err)
-			}
-
-			if string(masterPass) != string(confirmPass) {
-				fmt.Println("Password doesn't match. Please enter the password again")
-				readingMasterPassword = 1
-			} else {
-				readingConfirmPassword = 0
-			}
-		}
-	}
-
-	// hashedMasterPassword := encryption.EncryptPassword([]byte(masterPass), string(masterPass))
+func CreateVault(vaultName string, masterPass string) (bool, error) {
 
 	// Create the vault file with the password.
 	file, err := fileOperations.CreateFile(vaultName, string(masterPass))
@@ -148,13 +67,13 @@ func ManageExistingVault(vaultName string) (bool, error) {
 					// If a vault is created vault will contain a boolean value
 					// of true and error as nil else vault will be false and error
 					// will contain error message.
-					_, err := CreateVault()
+					// _, err := CreateVault(vaultName)
 
 					// If an error was returned, print it to the console and
 					// exit the program.
-					if err != nil {
-						return false, errors.New("error creating the vault")
-					}
+					// if err != nil {
+					// 	return false, errors.New("error creating the vault")
+					// }
 
 					return true, nil
 				} else if intOption == 2 {
