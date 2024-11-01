@@ -5,32 +5,6 @@ import (
 	"strconv"
 )
 
-func prompt(message string, requireMultiplePrompts bool, invalidPromptReceivedCondition bool, invalidPromptMessage string) string {
-
-	var selectedOption string
-	var readingPrompt string = "reading-prompt"
-
-	if requireMultiplePrompts {
-		for readingPrompt != "not-reading-prompt" {
-			if readingPrompt == "reading-prompt" {
-				fmt.Print(message)
-				fmt.Scan(&selectedOption)
-				if invalidPromptReceivedCondition {
-					fmt.Println(invalidPromptMessage)
-					readingPrompt = "reading-prompt"
-				} else {
-					readingPrompt = "not-reading-prompt"
-				}
-			}
-		}
-	} else {
-		fmt.Print(message)
-		fmt.Scan(&selectedOption)
-	}
-
-	return string(selectedOption)
-}
-
 /**
  * Welcome to password manager.
  * What would you like to do?
@@ -52,7 +26,6 @@ func PromptUserInput() int64 {
 	fmt.Println("3. Delete vault.")
 	fmt.Println("4. Fetch all credentials from a vault.")
 	fmt.Println("5. Fetch a credential from a vault.")
-	fmt.Println("6. Show JSON file data.")
 	fmt.Println("Quit (enter q or quit or press \"ctrl+c\")")
 
 	for gettingInput != 0 {
@@ -72,7 +45,7 @@ func PromptUserInput() int64 {
 				continue
 			}
 
-			if intOption <= 0 || intOption >= 7 {
+			if intOption <= 0 || intOption >= 6 {
 				fmt.Println("Please enter a valid option.")
 				gettingInput = 1
 			} else {

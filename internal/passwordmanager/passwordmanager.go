@@ -153,6 +153,8 @@ func promptUser() {
 				var enteredMasterPass []byte
 				var readingVaultName bool = true
 				var goBack string = "no"
+				var decodedFile string
+				var credsFromVault []string
 
 				fd := int(os.Stdin.Fd())
 
@@ -191,15 +193,15 @@ func promptUser() {
 								panic(err)
 							}
 
-							decodedFile, err := decryption.DecryptFile("vaults/"+vaultName+".csv", string(enteredMasterPass))
+							decodedFile, err = decryption.DecryptFile("vaults/"+vaultName+".csv", string(enteredMasterPass))
 							if err != nil {
 								fmt.Println("Password doesn't match. Please try again.")
 								continue
 							}
 
-							creds := strings.Split(decodedFile, ",")
+							credsFromVault = strings.Split(decodedFile, ",")
 
-							decodedMasterPassword := decryption.DecryptPassword([]byte(creds[1]), string(enteredMasterPass))
+							decodedMasterPassword := decryption.DecryptPassword([]byte(credsFromVault[1]), string(enteredMasterPass))
 
 							// if entered masterpass is equal to vault master pass continue else show the prompt.
 							if decodedMasterPassword != string(enteredMasterPass) {
@@ -213,16 +215,9 @@ func promptUser() {
 							}
 						}
 
-						decodedFile, err := decryption.DecryptFile("vaults/"+vaultName+".csv", string(enteredMasterPass))
-						if err != nil {
-							panic(err.Error())
-						}
-
-						creds := strings.Split(decodedFile, ",")
-
-						for i := 2; i < len(creds)-1; i = i + 2 {
-							decodedUsername := decryption.DecryptPassword([]byte(creds[i]), string(enteredMasterPass))
-							decodedPassword := decryption.DecryptPassword([]byte(creds[i+1]), string(enteredMasterPass))
+						for i := 2; i < len(credsFromVault)-1; i = i + 2 {
+							decodedUsername := decryption.DecryptPassword([]byte(credsFromVault[i]), string(enteredMasterPass))
+							decodedPassword := decryption.DecryptPassword([]byte(credsFromVault[i+1]), string(enteredMasterPass))
 
 							fmt.Println("---------------------------------------------------------------------------")
 							fmt.Printf("Username: %s", decodedUsername)
