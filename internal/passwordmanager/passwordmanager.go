@@ -3,8 +3,12 @@ package passwordmanager
 import (
 	"fmt"
 	"log"
+	"os"
 	"password-manager/internal/consoleprompts"
 	"password-manager/internal/vaultOperations"
+	"password-manager/security/decryption"
+
+	"golang.org/x/term"
 )
 
 func promptUser() {
@@ -63,10 +67,23 @@ func promptUser() {
 				continue
 
 			} else if userSelectedOption == 4 {
+				var vaultName string
+				fd := int(os.Stdin.Fd())
+
 				fmt.Println("Fetching all credentials from the vault...")
-				// If a vault already exists, siging to the vault to view all
-				// the contained creds.
-				// _, err := vaultOperations.SigninToVault()
+				fmt.Print("Enter vault name: ")
+				fmt.Scan(&vaultName)
+				fmt.Print("Please the master password: ")
+				masterPass, err := term.ReadPassword(fd)
+				fmt.Println()
+				if err != nil {
+					panic(err)
+				}
+				// hashedMasterPassword := encryption.EncryptPassword([]byte(masterPass), string(masterPass))
+
+				decodedFile := decryption.DecryptFile("vaults/"+vaultName+".csv", string(masterPass))
+
+				fmt.Println(decodedFile)
 				continue
 
 			} else if userSelectedOption == 5 {
@@ -74,6 +91,23 @@ func promptUser() {
 				// If a vault already exists, siging to the vault to view all
 				// the contained creds.
 				// _, err := vaultOperations.SigninToVault()
+				continue
+
+			} else if userSelectedOption == 6 {
+
+				fd := int(os.Stdin.Fd())
+
+				fmt.Println("Fetching all credentials from the JSON file...")
+				fmt.Print("Please the master password: ")
+				masterPass, err := term.ReadPassword(fd)
+				fmt.Println()
+				if err != nil {
+					panic(err)
+				}
+				// hashedMasterPassword := encryption.EncryptPassword([]byte(masterPass), string(masterPass))
+
+				decodedFile := decryption.DecryptFile("vaults/VaultsInfo.json", string(masterPass))
+				fmt.Println(decodedFile)
 				continue
 
 			} else {

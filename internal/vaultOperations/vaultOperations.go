@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"password-manager/internal/fileOperations"
-	"password-manager/security/encryption"
 	"strconv"
 
 	"golang.org/x/term"
@@ -92,10 +91,10 @@ func CreateVault() (bool, error) {
 		}
 	}
 
-	hashedMasterPassword := encryption.EncryptPassword([]byte(masterPass))
+	// hashedMasterPassword := encryption.EncryptPassword([]byte(masterPass), string(masterPass))
 
 	// Create the vault file with the password.
-	file, err := fileOperations.CreateFile(vaultName, hashedMasterPassword)
+	file, err := fileOperations.CreateFile(vaultName, string(masterPass))
 
 	if err != nil {
 		return false, errors.New("file creation error")
