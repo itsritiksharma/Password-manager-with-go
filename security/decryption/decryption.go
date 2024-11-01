@@ -4,23 +4,26 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/hex"
+	"errors"
 	"log"
+	"os"
 	"password-manager/security/hash"
 )
 
 /**
  * Decrypts the password with AES-256 algorithm and GCM.
  */
-func DecryptPassword(encodedEncryptedPassword []byte) string {
+func DecryptPassword(encodedEncryptedPassword []byte, masterPassword string) string {
 
 	var decryptedPassword []byte
 
 	decodedCipher, _ := hex.DecodeString(string(encodedEncryptedPassword))
 
-	hashedKey := hash.GetPasswordHashingKey()
+	hashedKey := hash.GetPasswordHashingKey(masterPassword)
 
 	key, _ := hex.DecodeString(hashedKey)
-	// inClearData := []byte("Some Clear Data")
+
+	dataVerifier := []byte(masterPassword)
 
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
@@ -39,7 +42,7 @@ func DecryptPassword(encodedEncryptedPassword []byte) string {
 
 	nonce, cipherText := decodedCipher[:nonceSize], decodedCipher[nonceSize:]
 
-	decryptedPassword, err = gcmBlock.Open(nil, nonce, cipherText, nil)
+	decryptedPassword, err = gcmBlock.Open(nil, nonce, cipherText, dataVerifier)
 
 	if err != nil {
 		panic(err)
@@ -53,16 +56,19 @@ func DecryptPassword(encodedEncryptedPassword []byte) string {
 /**
  * Decrypts the password with AES-256 algorithm and GCM.
  */
-func DecryptFileData(encodedEncryptedFile []byte) string {
+func DecryptFile(fileName string, masterPassword string) (string, error) {
 
 	var decryptedFileData []byte
 
-	decodedCipher, _ := hex.DecodeString(string(encodedEncryptedFile))
+	readData, err := os.ReadFile(fileName)
+	if err != nil {
+		panic(err.Error())
+	}
 
-	hashedKey := hash.GetFileHashingKey()
+	hashedKey := hash.GetFileHashingKey(masterPassword)
 
 	key, _ := hex.DecodeString(hashedKey)
-	// inClearData := []byte("Some Clear Data")
+	dataVerifier := []byte(masterPassword)
 
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
@@ -75,19 +81,19 @@ func DecryptFileData(encodedEncryptedFile []byte) string {
 	}
 
 	nonceSize := gcmBlock.NonceSize()
-	if len(decodedCipher) < nonceSize {
+	if len(readData) < nonceSize {
 		log.Fatal("Nonce and decoded ", err)
 	}
 
-	nonce, cipherText := decodedCipher[:nonceSize], decodedCipher[nonceSize:]
+	nonce, cipherText := readData[:nonceSize], readData[nonceSize:]
 
-	decryptedFileData, err = gcmBlock.Open(nil, nonce, cipherText, nil)
+	decryptedFileData, err = gcmBlock.Open(nil, nonce, cipherText, dataVerifier)
 
 	if err != nil {
-		panic(err)
+		return "", errors.New("decryption failed")
 	}
 
 	fileData := string(decryptedFileData)
 
-	return fileData
+	return fileData, nil
 }

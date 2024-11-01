@@ -50,8 +50,9 @@ func PromptUserInput() int64 {
 	fmt.Println("1. Create a new vault.")
 	fmt.Println("2. Signin to an existing vault.")
 	fmt.Println("3. Delete vault.")
-	fmt.Println("4. Fetch a credential from a vault.")
-	fmt.Println("5. Fetch all credentials from a vault.")
+	fmt.Println("4. Fetch all credentials from a vault.")
+	fmt.Println("5. Fetch a credential from a vault.")
+	fmt.Println("6. Show JSON file data.")
 	fmt.Println("Quit (enter q or quit or press \"ctrl+c\")")
 
 	for gettingInput != 0 {
@@ -71,7 +72,7 @@ func PromptUserInput() int64 {
 				continue
 			}
 
-			if intOption <= 0 || intOption >= 6 {
+			if intOption <= 0 || intOption >= 7 {
 				fmt.Println("Please enter a valid option.")
 				gettingInput = 1
 			} else {

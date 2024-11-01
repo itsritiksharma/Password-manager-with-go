@@ -90,10 +90,7 @@ func createJsonFile(jsonFileData []Json) (bool, error) {
 		}
 		defer openJsonFile.Close()
 
-		// Encrypt the data before writing.
-		encryptedFile := encryption.EncryptFile([]byte(formattedJsonData))
-
-		_, err = openJsonFile.Write([]byte(encryptedFile))
+		_, err = openJsonFile.Write([]byte(formattedJsonData))
 		if err != nil {
 			openJsonFile.Close() // ignore error; Write error takes precedence
 			log.Fatal("Failed to write to file: ", err)
@@ -158,14 +155,14 @@ func FileExists(filename string) (bool, error) {
 	return false, nil
 }
 
-func CreateFile(vaultName, password string) (bool, error) {
+func CreateFile(vaultName, masterPassword string) (bool, error) {
 	log.SetPrefix("createfile: ")
 	log.SetFlags(0)
 
-	var hexPass, username string
+	var vault []string
+	var username string
 	var takeInput string = "y"
 
-	var vault []string
 	var creds []Credential
 	var csvData [][]string
 	var vaultFile = vaultName + ".csv"
@@ -187,10 +184,7 @@ func CreateFile(vaultName, password string) (bool, error) {
 				panic(err)
 			}
 
-			// Hash the password for creds.
-			hexPass = encryption.EncryptPassword(password)
-
-			credData[username] = string(hexPass)
+			credData[username] = string(password)
 
 			fmt.Print("Do you want to add more credentials [y/N]? ")
 			fmt.Scan(&takeInput)
@@ -206,39 +200,75 @@ func CreateFile(vaultName, password string) (bool, error) {
 		creds = append(creds, Credential{Username: key, Password: value})
 	}
 
+	// Hash the username for creds.
+	encryptedVaultName := encryption.EncryptPassword([]byte(vaultName), masterPassword)
+
+	// Hash the password for creds.
+	encryptedMasterPassword := encryption.EncryptPassword([]byte(masterPassword), masterPassword)
+
+	vault = append(vault, encryptedVaultName, encryptedMasterPassword)
+
 	// Add each credential as a separate entry
 	for _, cred := range creds {
-		vault = append(vault, cred.Username, cred.Password)
+
+		// Hash the username for creds.
+		encryptedUsername := encryption.EncryptPassword([]byte(cred.Username), masterPassword)
+
+		// Hash the password for creds.
+		encryptedPassword := encryption.EncryptPassword([]byte(cred.Password), masterPassword)
+
+		vault = append(vault, encryptedUsername, encryptedPassword)
+
 	}
 
 	// Append the entry to the result
 	csvData = append(csvData, vault)
-
-	// Encrypt the csvdata before writing.
-	// encryption.EncryptFile([]byte(csvData))
 
 	_, err := createCsvFile(vaultFile, csvData)
 	if err != nil {
 		return false, errors.New("failed to create the csv file")
 	}
 
+	hashedMasterPassword := encryption.EncryptPassword([]byte(masterPassword), string(masterPassword))
+
 	jsonFileData := []Json{{
 		VaultName:      vaultName,
-		MasterPassword: password,
+		MasterPassword: hashedMasterPassword,
 		Creds:          creds,
 	}}
 
-	// Encrypt the json data before writing.
-	// Marshal the vaults slice to JSON
-	// jsonData, err := json.MarshalIndent(jsonFileData, "", "  ")
-	// if err != nil {
-	// 	log.Fatalf("Failed to create the JSON file.")
-	// }
-	// encryption.EncryptFile([]byte(jsonFileData))
 	_, err = createJsonFile(jsonFileData)
 	if err != nil {
 		return false, errors.New("failed to create the json file")
 	}
+
+	// Encrypt csv
+	csvFileExists, err := FileExists(vaultFile)
+	if err != nil {
+		log.Fatal("Json file exists error: ", err)
+	}
+
+	if !csvFileExists {
+		return false, errors.New("csv file does not exist for encryption")
+	}
+	_, err = encryption.EncryptFile(vaultDir+vaultFile, masterPassword)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Encrypt JSON
+	// jsonFileExists, err := FileExists("VaultsInfo.json")
+	// if err != nil {
+	// 	log.Fatal("Json file exists error: ", err)
+	// }
+
+	// if !jsonFileExists {
+	// 	return false, errors.New("csv file does not exist for encryption")
+	// }
+	// _, err = encryption.EncryptFile(vaultDir+"VaultsInfo.json", masterPassword)
+	// if err != nil {
+	// 	panic(err.Error())
+	// }
 
 	return true, nil
 }
