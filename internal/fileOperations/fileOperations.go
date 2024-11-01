@@ -197,7 +197,9 @@ func CreateFile(vaultName, masterPassword string) (bool, error) {
 
 	// Create a mapping of credential from the data entered by user.
 	for key, value := range credData {
-		creds = append(creds, Credential{Username: key, Password: value})
+		encryptedCredPassword := encryption.EncryptPassword([]byte(value), masterPassword)
+
+		creds = append(creds, Credential{Username: key, Password: encryptedCredPassword})
 	}
 
 	// Hash the username for creds.
@@ -214,10 +216,7 @@ func CreateFile(vaultName, masterPassword string) (bool, error) {
 		// Hash the username for creds.
 		encryptedUsername := encryption.EncryptPassword([]byte(cred.Username), masterPassword)
 
-		// Hash the password for creds.
-		encryptedPassword := encryption.EncryptPassword([]byte(cred.Password), masterPassword)
-
-		vault = append(vault, encryptedUsername, encryptedPassword)
+		vault = append(vault, encryptedUsername, cred.Password)
 
 	}
 
