@@ -91,9 +91,9 @@ func createJsonFile(jsonFileData []Json) (bool, error) {
 		defer openJsonFile.Close()
 
 		// Encrypt the data before writing.
-		encryptedFile := encryption.EncryptFile([]byte(formattedJsonData))
+		// encryptedFile := encryption.EncryptFile([]byte(formattedJsonData))
 
-		_, err = openJsonFile.Write([]byte(encryptedFile))
+		_, err = openJsonFile.Write([]byte(formattedJsonData))
 		if err != nil {
 			openJsonFile.Close() // ignore error; Write error takes precedence
 			log.Fatal("Failed to write to file: ", err)
@@ -165,7 +165,7 @@ func CreateFile(vaultName, password string) (bool, error) {
 	var hexPass, username string
 	var takeInput string = "y"
 
-	var vault []string
+	// var vault []string
 	var creds []Credential
 	var csvData [][]string
 	var vaultFile = vaultName + ".csv"
@@ -208,14 +208,11 @@ func CreateFile(vaultName, password string) (bool, error) {
 
 	// Add each credential as a separate entry
 	for _, cred := range creds {
-		vault = append(vault, cred.Username, cred.Password)
+		encryptedUsername := encryption.EncryptFile([]byte(cred.Username))
+		encryptedPassword := encryption.EncryptFile([]byte(cred.Password))
+		encrypteVault := []string{encryptedUsername, encryptedPassword}
+		csvData = append(csvData, encrypteVault)
 	}
-
-	// Append the entry to the result
-	csvData = append(csvData, vault)
-
-	// Encrypt the csvdata before writing.
-	// encryption.EncryptFile([]byte(csvData))
 
 	_, err := createCsvFile(vaultFile, csvData)
 	if err != nil {
