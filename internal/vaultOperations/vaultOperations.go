@@ -3,9 +3,68 @@ package vaultOperations
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"password-manager/internal/fileOperations"
+	"password-manager/security/decryption"
 	"strconv"
+	"strings"
+
+	"golang.org/x/term"
 )
+
+/**
+ * Fetches all the records present in a vault.
+ */
+func FetchRecordsFromVault(recordsToFetch string, vaultName string, masterPassword []byte) {
+	var credName string
+	var credsFromVault []string
+
+	if recordsToFetch == "all" {
+		fmt.Println("Fetching all credentials from the vault...")
+	} else {
+		fmt.Println("Fetching the requested credential from vault...")
+	}
+
+	decodedFile, err := decryption.DecryptFile("vaults/"+vaultName+".csv", string(masterPassword))
+	if err != nil {
+		fmt.Println("Password doesn't match. Please try again.")
+	}
+
+	credsFromVault = strings.Split(decodedFile, ",")
+
+	for i := 2; i < len(credsFromVault)-1; i = i + 2 {
+
+		decodedUsername := decryption.DecryptPassword([]byte(credsFromVault[i]), string(masterPassword))
+		decodedPassword := decryption.DecryptPassword([]byte(credsFromVault[i+1]), string(masterPassword))
+
+		if recordsToFetch != "all" {
+
+			fmt.Print("Enter cred to fetch: ")
+			fmt.Scan(&credName)
+
+			if credName == decodedUsername {
+				fmt.Println("----------------------------------------------")
+				fmt.Printf("Username: %s", decodedUsername)
+				fmt.Println()
+				fmt.Printf("Password: %s", decodedPassword)
+				fmt.Println()
+				break
+			} else {
+				fmt.Println("No cred found by this name. Try again.")
+				i = i - 2
+				continue
+			}
+		} else {
+			fmt.Println("----------------------------------------------")
+			fmt.Printf("Username: %s", decodedUsername)
+			fmt.Println()
+			fmt.Printf("Password: %s", decodedPassword)
+			fmt.Println()
+		}
+
+	}
+}
 
 /**
  * Function to allow the user to crate a password vault.
@@ -23,20 +82,56 @@ func CreateVault(vaultName string, masterPass string) (bool, error) {
 		fmt.Println("No new vault created!!")
 		return false, nil
 	} else {
+		fmt.Println("----------------------------------------------")
 		fmt.Println("New vault created!!")
 	}
 
 	return true, nil
 }
 
-func ManageExistingVault(vaultName string) (bool, error) {
+func DeleteVault(vaultName string) (bool, error) {
+
+	var confirmation string = "no"
+	var gettingConfirmation bool = true
+
+	for gettingConfirmation {
+		fmt.Print("Are you sure you want to delete the vault?[y/N] ")
+		fmt.Scan(&confirmation)
+		if confirmation == "y" || confirmation == "Y" || confirmation == "yes" || confirmation == "Yes" {
+			break
+		} else if confirmation == "n" || confirmation == "N" || confirmation == "no" || confirmation == "No" {
+			gettingConfirmation = false
+			return false, nil
+		} else {
+			fmt.Println("Invalid input. Please try again.")
+			continue
+		}
+	}
+
+	err := os.Remove("vaults/" + vaultName)
+	if err != nil {
+		fmt.Println("Some error occured. Please try again.")
+		return false, errors.New("some error occured while deleting the file")
+	}
+	fmt.Println("----------------------------------------------")
+	fmt.Println("Vault file deleted successfully!!")
+
+	return true, nil
+}
+
+func ManageExistingVault(userProvidedVaultName string) (bool, error) {
 	var selectedOption string
 	var gettingInput string = "yes"
+	var vaultName string
+	var readingVaultName bool = true
+	var readingMasterPassword, readingConfirmPassword bool = true, true
+	var masterPass, confirmPass []byte
+	fd := int(os.Stdin.Fd())
 
 	fmt.Println("A vault with this name already exists. What would you like to do?")
 	fmt.Println("1. Create a new vault with different name.")
-	fmt.Println("2. Signin to \"" + vaultName + "\" vault.")
-	fmt.Println("3. Delete \"" + vaultName + "\" vault")
+	fmt.Println("2. Signin to \"" + userProvidedVaultName + "\" vault.")
+	fmt.Println("3. Delete \"" + userProvidedVaultName + "\" vault")
 	fmt.Println("4. Go back to initial options.")
 	fmt.Println("Quit (enter q or quit or press \"ctrl+c\")")
 
@@ -64,16 +159,85 @@ func ManageExistingVault(vaultName string) (bool, error) {
 			} else {
 				if intOption == 1 {
 
+					fmt.Println("Creating a new vault!")
+
+					for readingVaultName {
+						fmt.Print("Please provide a name for the vault: ")
+						fmt.Scan(&vaultName)
+
+						// If no name was given, return an error with a message.
+						if vaultName != "" {
+							readingVaultName = false
+							break
+						}
+
+						fmt.Println("Invalid vault name. Please try again.")
+						continue
+					}
+
+					dirExists := fileOperations.DirExists()
+
+					if !dirExists {
+						// Create the vaults directory with and set 744 permission.
+						err = os.Mkdir("vaults/", os.FileMode(0744))
+						if err != nil {
+							log.Fatal(err)
+						}
+					}
+
+					fileExists, err := fileOperations.FileExists(vaultName + ".csv")
+					if err != nil {
+						log.Fatalf("file exist error: %x", err)
+					}
+
+					if fileExists {
+						continue
+					}
+
+					for readingMasterPassword {
+						fmt.Print("Please provide a master password: ")
+						masterPass, err = term.ReadPassword(fd)
+						fmt.Println()
+						if err != nil {
+							panic(err)
+						}
+						if len(masterPass) < 8 {
+							fmt.Println("Password shoud be minimum 8 characters long.")
+							continue
+						} else {
+							readingMasterPassword = false
+							break
+						}
+					}
+
+					for readingConfirmPassword {
+						fmt.Print("Please confirm the master password: ")
+						confirmPass, err = term.ReadPassword(fd)
+						fmt.Println()
+						if err != nil {
+							panic(err)
+						}
+
+						if string(masterPass) != string(confirmPass) {
+							fmt.Println("Password doesn't match. Please enter the password again")
+							continue
+						} else {
+							readingConfirmPassword = false
+							break
+						}
+					}
+
 					// If a vault is created vault will contain a boolean value
 					// of true and error as nil else vault will be false and error
 					// will contain error message.
-					// _, err := CreateVault(vaultName)
+					_, err = CreateVault(vaultName, string(masterPass))
 
 					// If an error was returned, print it to the console and
 					// exit the program.
-					// if err != nil {
-					// 	return false, errors.New("error creating the vault")
-					// }
+					if err != nil {
+						log.Fatalf("Vault creation error: %x", err)
+					}
+					fmt.Println("---------------------")
 
 					return true, nil
 				} else if intOption == 2 {
@@ -130,12 +294,94 @@ func ManageExistingVault(vaultName string) (bool, error) {
 /**
  * Function to allow the user to signin to the vault.
  */
-// func SigninToVault(vaultName, vaultMasterPassword string) (bool, error) {
-// 	if vaultName == "" {
-// 		return false, errors.New("empty vault name")
-// 	}
+func SigninToVault() (string, string) {
+	var vaultName string
+	var readingMasterPassword bool = true
+	var readingVaultName bool = true
+	var tryAgain string = "yes"
+	var decodedFile string
+	var credsFromVault []string
+	var enteredMasterPass []byte
+	var err error
 
-// 	if enteredMasterPass != masterPass {
-// 		return false, errors.New("passwords don't match")
-// 	}
-// }
+	fd := int(os.Stdin.Fd())
+
+	for readingVaultName {
+		if tryAgain == "y" || tryAgain == "Y" || tryAgain == "yes" || tryAgain == "Yes" {
+			fmt.Print("Enter vault name: ")
+			fmt.Scan(&vaultName)
+
+			if vaultName == "" {
+				fmt.Println("Invalid vault name. Please try again.")
+				continue
+			}
+
+			vaultFileExists, err := fileOperations.FileExists(vaultName + ".csv")
+			if !vaultFileExists || err != nil {
+				var invalidInput bool = true
+				fmt.Println("No vault exists by this name.")
+
+				for invalidInput {
+					fmt.Print("Want to try again?[y/N] ")
+					fmt.Scan(&tryAgain)
+					if tryAgain == "y" || tryAgain == "Y" || tryAgain == "yes" || tryAgain == "Yes" {
+						vaultName = ""
+						invalidInput = false
+						break
+					} else if tryAgain == "n" || tryAgain == "N" || tryAgain == "no" || tryAgain == "No" {
+						vaultName = ""
+						invalidInput = false
+						break
+					} else {
+						fmt.Println("Invalid input. Try again.")
+						invalidInput = true
+						continue
+					}
+				}
+				if tryAgain == "y" || tryAgain == "Y" || tryAgain == "yes" || tryAgain == "Yes" {
+					continue
+				}
+			}
+		}
+		break
+	}
+
+	if vaultName == "" {
+		return "", ""
+	}
+	for readingMasterPassword {
+		fmt.Print("Please enter master password: ")
+		enteredMasterPass, err = term.ReadPassword(fd)
+		fmt.Println()
+		if err != nil {
+			panic(err)
+		}
+
+		decodedFile, err = decryption.DecryptFile("vaults/"+vaultName+".csv", string(enteredMasterPass))
+		if err != nil {
+			fmt.Println("Password doesn't match. Please try again.")
+			continue
+		}
+
+		credsFromVault = strings.Split(decodedFile, ",")
+
+		decodedMasterPassword := decryption.DecryptPassword([]byte(credsFromVault[1]), string(enteredMasterPass))
+
+		// if entered masterpass is equal to vault master pass continue else show the prompt.
+		if decodedMasterPassword != string(enteredMasterPass) {
+			fmt.Println("Password doesn't match. Please try again.")
+			continue
+		} else if len(enteredMasterPass) < 8 {
+			fmt.Println("Password shoud be minimum 8 characters long.")
+			continue
+		} else {
+			readingMasterPassword = false
+			break
+		}
+	}
+
+	fmt.Println("----------------------------------------------")
+	fmt.Println("Signed in successfully!!")
+
+	return string(vaultName), string(enteredMasterPass)
+}
