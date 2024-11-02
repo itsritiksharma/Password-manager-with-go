@@ -6,6 +6,6 @@ import (
 )
 
 func main() {
-	fmt.Println("-----------PASSWORD MANAGER-----------")
+	fmt.Println("---------------PASSWORD MANAGER---------------")
 	passwordmanager.Manage()
 }
