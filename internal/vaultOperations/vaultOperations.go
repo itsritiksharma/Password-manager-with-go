@@ -338,17 +338,18 @@ func SigninToVault() (string, string) {
 						continue
 					}
 				}
+
 				if tryAgain == "y" || tryAgain == "Y" || tryAgain == "yes" || tryAgain == "Yes" {
 					continue
+				}
+				if tryAgain == "n" || tryAgain == "N" || tryAgain == "no" || tryAgain == "No" {
+					return "", ""
 				}
 			}
 		}
 		break
 	}
 
-	if vaultName == "" {
-		return "", ""
-	}
 	for readingMasterPassword {
 		fmt.Print("Please enter master password: ")
 		enteredMasterPass, err = term.ReadPassword(fd)
