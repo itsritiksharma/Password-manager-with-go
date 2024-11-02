@@ -188,6 +188,9 @@ func promptUser() {
 				if err != nil {
 					log.Fatalf("Vault creation error: %x", err)
 				}
+				vaultName = ""
+				masterPass = []byte("")
+				signedInToVault = false
 
 				continue
 			} else if userSelectedOption == 2 {
@@ -218,6 +221,8 @@ func promptUser() {
 						signedInToVault = true
 						masterPass = []byte(masterPassword)
 						vaultName = signedinVaultName
+					} else {
+						continue
 					}
 				}
 				vaultOperations.FetchRecordsFromVault("all", vaultName, []byte(masterPass))
