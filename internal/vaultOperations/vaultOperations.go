@@ -91,6 +91,23 @@ func CreateVault(vaultName string, masterPass string) (bool, error) {
 
 func DeleteVault(vaultName string) (bool, error) {
 
+	var confirmation string = "no"
+	var gettingConfirmation bool = true
+
+	for gettingConfirmation {
+		fmt.Print("Are you sure you want to delete the vault?[y/N] ")
+		fmt.Scan(&confirmation)
+		if confirmation == "y" || confirmation == "Y" || confirmation == "yes" || confirmation == "Yes" {
+			break
+		} else if confirmation == "n" || confirmation == "N" || confirmation == "no" || confirmation == "No" {
+			gettingConfirmation = false
+			return false, nil
+		} else {
+			fmt.Println("Invalid input. Please try again.")
+			continue
+		}
+	}
+
 	err := os.Remove("vaults/" + vaultName)
 	if err != nil {
 		fmt.Println("Some error occured. Please try again.")

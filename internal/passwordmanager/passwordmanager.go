@@ -75,7 +75,7 @@ func promptUser() {
 					// call another function which handles user input to determine
 					// what to do next.
 					vaultDeleted, err := vaultOperations.DeleteVault(vaultName + ".csv")
-					if !vaultDeleted || err != nil {
+					if err != nil {
 						fmt.Println(err.Error())
 					}
 					if vaultDeleted {
