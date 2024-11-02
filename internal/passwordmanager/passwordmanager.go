@@ -53,23 +53,8 @@ func promptUser() {
 
 				continue
 			} else if userSelectedOption == 3 {
-				readingVaultName = true
 
-				fmt.Println("Deleting vault...")
-
-				for readingVaultName {
-					fmt.Print("Please provide a name for the vault: ")
-					fmt.Scan(&vaultName)
-
-					// If no name was given, return an error with a message.
-					if vaultName != "" {
-						readingVaultName = false
-						break
-					}
-
-					fmt.Println("Invalid vault name. Please try again.")
-					continue
-				}
+				fmt.Println("Deleting vault named " + vaultName + "...")
 
 				dirExists := fileOperations.DirExists()
 
@@ -89,7 +74,15 @@ func promptUser() {
 				if fileExists {
 					// call another function which handles user input to determine
 					// what to do next.
-					vaultOperations.DeleteVault(vaultName)
+					vaultDeleted, err := vaultOperations.DeleteVault(vaultName + ".csv")
+					if !vaultDeleted || err != nil {
+						fmt.Println(err.Error())
+					}
+					if vaultDeleted {
+						signedInToVault = false
+						vaultName = ""
+						masterPass = []byte("")
+					}
 					continue
 				}
 				continue
@@ -206,6 +199,11 @@ func promptUser() {
 						signedInToVault = true
 						masterPass = []byte(masterPassword)
 						vaultName = signedinVaultName
+					} else {
+						signedInToVault = false
+						masterPass = []byte("")
+						vaultName = ""
+						continue
 					}
 				} else {
 					fmt.Println("----------------------------------------------")

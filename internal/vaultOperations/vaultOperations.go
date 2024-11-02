@@ -91,16 +91,13 @@ func CreateVault(vaultName string, masterPass string) (bool, error) {
 
 func DeleteVault(vaultName string) (bool, error) {
 
-	// Create the vault file with the password.
-	fileExists, err := fileOperations.FileExists(vaultName + ".csv")
-
-	if !fileExists || err != nil {
-		fmt.Println("No vault by this name.")
-		return false, nil
-	} else {
-		fmt.Println("----------------------------------------------")
-		fmt.Println("New vault created!!")
+	err := os.Remove("vaults/" + vaultName)
+	if err != nil {
+		fmt.Println("Some error occured. Please try again.")
+		return false, errors.New("some error occured while deleting the file")
 	}
+	fmt.Println("----------------------------------------------")
+	fmt.Println("Vault file deleted successfully!!")
 
 	return true, nil
 }
@@ -284,7 +281,7 @@ func SigninToVault() (string, string) {
 	var vaultName string
 	var readingMasterPassword bool = true
 	var readingVaultName bool = true
-	var goBack string = "no"
+	var tryAgain string = "yes"
 	var decodedFile string
 	var credsFromVault []string
 	var enteredMasterPass []byte
@@ -293,7 +290,7 @@ func SigninToVault() (string, string) {
 	fd := int(os.Stdin.Fd())
 
 	for readingVaultName {
-		if goBack == "n" || goBack == "N" || goBack == "no" || goBack == "No" {
+		if tryAgain == "y" || tryAgain == "Y" || tryAgain == "yes" || tryAgain == "Yes" {
 			fmt.Print("Enter vault name: ")
 			fmt.Scan(&vaultName)
 
@@ -304,22 +301,37 @@ func SigninToVault() (string, string) {
 
 			vaultFileExists, err := fileOperations.FileExists(vaultName + ".csv")
 			if !vaultFileExists || err != nil {
-				fmt.Println("No vault exists by this name. Please try again.")
-				fmt.Print("Want to go back to main menu?[y/N] ")
-				fmt.Scan(&goBack)
-				if goBack == "y" || goBack == "Y" || goBack == "yes" || goBack == "Yes" {
-					break
-				} else if goBack == "n" || goBack == "N" || goBack == "no" || goBack == "No" {
+				var invalidInput bool = true
+				fmt.Println("No vault exists by this name.")
+
+				for invalidInput {
+					fmt.Print("Want to try again?[y/N] ")
+					fmt.Scan(&tryAgain)
+					if tryAgain == "y" || tryAgain == "Y" || tryAgain == "yes" || tryAgain == "Yes" {
+						vaultName = ""
+						invalidInput = false
+						break
+					} else if tryAgain == "n" || tryAgain == "N" || tryAgain == "no" || tryAgain == "No" {
+						vaultName = ""
+						invalidInput = false
+						break
+					} else {
+						fmt.Println("Invalid input. Try again.")
+						invalidInput = true
+						continue
+					}
+				}
+				if tryAgain == "y" || tryAgain == "Y" || tryAgain == "yes" || tryAgain == "Yes" {
 					continue
-				} else {
-					fmt.Println("Invalid input, going back to main menu.")
-					break
 				}
 			}
-			break
 		}
+		break
 	}
 
+	if vaultName == "" {
+		return "", ""
+	}
 	for readingMasterPassword {
 		fmt.Print("Please enter master password: ")
 		enteredMasterPass, err = term.ReadPassword(fd)
