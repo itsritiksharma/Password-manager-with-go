@@ -236,6 +236,8 @@ func promptUser() {
 						signedInToVault = true
 						masterPass = []byte(masterPassword)
 						vaultName = signedinVaultName
+					} else {
+						continue
 					}
 				}
 				vaultOperations.FetchRecordsFromVault("single", vaultName, []byte(masterPass))
