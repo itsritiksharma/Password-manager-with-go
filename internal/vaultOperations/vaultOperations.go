@@ -19,6 +19,7 @@ import (
 func FetchRecordsFromVault(recordsToFetch string, vaultName string, masterPassword []byte) {
 	var credName string
 	var credsFromVault []string
+	var credsFound bool
 
 	if recordsToFetch == "all" {
 		fmt.Println("Fetching all credentials from the vault...")
@@ -33,15 +34,16 @@ func FetchRecordsFromVault(recordsToFetch string, vaultName string, masterPasswo
 
 	credsFromVault = strings.Split(decodedFile, ",")
 
+	if recordsToFetch != "all" {
+		fmt.Print("Enter cred to fetch: ")
+		fmt.Scan(&credName)
+	}
+
 	for i := 2; i < len(credsFromVault)-1; i = i + 2 {
 
 		decodedUsername := decryption.DecryptPassword([]byte(credsFromVault[i]), string(masterPassword))
 		decodedPassword := decryption.DecryptPassword([]byte(credsFromVault[i+1]), string(masterPassword))
-
 		if recordsToFetch != "all" {
-
-			fmt.Print("Enter cred to fetch: ")
-			fmt.Scan(&credName)
 
 			if credName == decodedUsername {
 				fmt.Println("----------------------------------------------")
@@ -49,10 +51,10 @@ func FetchRecordsFromVault(recordsToFetch string, vaultName string, masterPasswo
 				fmt.Println()
 				fmt.Printf("Password: %s", decodedPassword)
 				fmt.Println()
+				credsFound = true
 				break
-			} else {
-				fmt.Println("No cred found by this name. Try again.")
-				i = i - 2
+			} else if credName != decodedUsername {
+				credsFound = false
 				continue
 			}
 		} else {
@@ -63,6 +65,9 @@ func FetchRecordsFromVault(recordsToFetch string, vaultName string, masterPasswo
 			fmt.Println()
 		}
 
+	}
+	if !credsFound {
+		fmt.Println("No cred found by this name. Try again.")
 	}
 }
 
